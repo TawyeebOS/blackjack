@@ -84,7 +84,7 @@ class Player:
     def doubledown(self, mainBet): #double bet and take a card
         self.wallet -= mainBet
         self.dealer.mainPot += mainBet
-        print(self.hit())
+        print("You drew", self.hit())
 
     
     def split(self): #split current hand into 2 hands and play with them seperately, draw a card for each hand
@@ -169,7 +169,59 @@ class Dealer:
             player.wallet += 2.5*self.mainPot
         elif winType == "draw":
             player.wallet += self.mainPot
-    
+
+    def doesPlayerDrawCards(self, player, bet):
+        choice = input("""
+        1. Hit
+        2. Double Down
+        3. Stand
+
+        Enter choice: """)
+        if choice == "1" or choice.lower() == "hit":
+            print("You drew", player.hit())
+            return True
+        elif choice == "2" or choice.lower() == "double down":
+            player.doubledown(bet)
+            return True
+        elif choice == "3" or choice.lower() == "stand":
+            player.stand()
+            return False
+
+    def doesPlayerFold(self, round):
+        if round == 1: #if this is the first round, asks the user if he wants to fold
+            foldChoice = input("Fold? (y/n):")
+            if foldChoice == "y":
+                self.player.fold(bet)
+                return True
+        return False
+
+    def checkIfBust(self, hand):
+        if self.checkValue(hand) > 21:
+            return True
+        else:
+            return False 
+
+    def checkSoft17(self):
+        print("The dealers hole card is", self.hand[1])
+        while self.checkValue(self.hand) < 17:
+            print("The dealer drew", self.hit())
+                
+    def checkWinDrawLose(self, player):
+        playerHandValue = self.checkValue(player.hand)
+        dealerHandValue = self.checkValue(self.hand)
+        print("The dealer hand has a value of", dealerHandValue)
+        print("Your hand has a value of", playerHandValue)
+
+        if dealerHandValue > 21 or dealerHandValue < playerHandValue:
+            print("You win")
+            self.payPlayer(player, "win")
+        elif dealerHandValue == playerHandValue:
+            print("draw")
+            self.payPlayer(player, "draw")
+        else:
+            print("You lose")
+
+
     def clearHand(self):
         self.hand = []
 
@@ -217,12 +269,13 @@ class Blackjack:
                 break
 
             self.player.dealer.deal(self.player)
-            if self.player.dealer.hand[0].rank == "A":
-                self.player.placeInsurance(bet)
+            if self.player.dealer.hand[0].rank == "A": #checks whether the player can place an insurance bet or not
+                self.player.placeInsurance(bet) 
 
-            if self.player.dealer.checkValue(self.player.hand) == 21:
+            if self.player.dealer.checkValue(self.player.hand) == 21: #this code block checks if the player has blackjack, then checks whether the dealer also has blackjack, then ends the game
                 print("{name} has BlackJack".format(name=self.player.name))
                 if self.player.dealer.checkValue(self.player.dealer.hand) == 21:
+                    print("The dealers hole card is", self.player.dealer.hand[1])
                     print("Dealer has blackjack, unlucky draw")
                     self.player.dealer.payPlayer(self.player, "insurance")
                 else:
@@ -233,7 +286,7 @@ class Blackjack:
                 else:
                     break
             
-            if self.player.dealer.checkValue(self.player.dealer.hand) == 21:
+            if self.player.dealer.checkValue(self.player.dealer.hand) == 21: #this checks whether or not the dealer has blackjack. then ends the game
                 print("The dealers hole card is", self.player.dealer.hand[1])
                 print("Dealer has blackjack")
                 self.player.dealer.payPlayer(self.player, "insurance")
@@ -242,66 +295,32 @@ class Blackjack:
                 else:
                     break
 
-            handValue = self.player.dealer.checkValue(self.player.hand)
-            round = 1
-            folding = False
-            while handValue <= 21:
-                if round == 1:
-                    foldChoice = input("Fold? (y/n):")
-                    if foldChoice == "y":
-                        self.player.fold(bet)
-                        folding = True
+            isHandABust = self.player.dealer.checkIfBust(self.player.hand)
+
+            if not isHandABust:
+                if self.player.dealer.doesPlayerFold(bet):
+                    if self.player.playAgain():
+                        continue
+                    else:
                         break
-                choice = input("""
-                1. Hit
-                2. Double Down
-                3. Stand
-
-                Enter choice: """)
-                if choice == "1" or choice.lower() == "hit":
-                    print("You drew", self.player.hit())
-                elif choice == "2" or choice.lower() == "double down":
-                    self.player.doubledown(bet)
-                elif choice == "3" or choice.lower() == "stand":
-                    self.player.stand()
-                    break
+            
+            while not isHandABust:
+                if not self.player.dealer.doesPlayerDrawCards(self.player, bet): # asks the user if they want to hit, doubledown or stand
+                    break #breaks the loop if the player stands
                 
-                handValue = self.player.dealer.checkValue(self.player.hand)
+                isHandABust = self.player.dealer.checkIfBust(self.player.hand)
                 self.player.displayHand()
-                round += 1
-            if folding:
-                if self.player.playAgain():
-                    continue
-                else:
-                    break
-
-            if handValue > 21:
+                
+            if isHandABust:
                 print("Bust. No win")
                 if self.player.playAgain():
                     continue
                 else:
                     break
 
+            self.player.dealer.checkSoft17() # checks if the dealer's hand has a value of 17, if not then it draws until so
 
-            print("The dealers hole card is", self.player.dealer.hand[1])
-            while self.player.dealer.checkValue(self.player.dealer.hand) < 17:
-                print("The dealer drew", self.player.dealer.hit())
-                
-
-            dealerHandValue = self.player.dealer.checkValue(self.player.dealer.hand)
-            print("The dealer hand has a value of", dealerHandValue)
-            print("Your hand has a value of", handValue)
-
-            if dealerHandValue > 21 or dealerHandValue < handValue:
-
-                print("You win")
-                self.player.dealer.payPlayer(self.player, "win")
-            elif dealerHandValue == handValue:
-                print("draw")
-                self.player.dealer.payPlayer(self.player, "draw")
-            else:
-                print("You lose")
-
+            self.player.dealer.checkWinDrawLose(self.player)
             if self.player.playAgain():
                 continue
             else:
