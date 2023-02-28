@@ -9,7 +9,11 @@ class Card:
         self.suit = suit
     
     def __repr__(self):
-        return "This card is the {rank} of {suit}".format(rank = self.rank, suit = self.suit)
+        special_names = {"A": "Ace", "J": "Jack", "Q": "Queen", "K": "King"}
+        if self.rank in special_names:
+            return "The {name} of {suit}".format(name = special_names[self.rank], suit = self.suit)    
+        else:
+            return "The {rank} of {suit}".format(rank = self.rank, suit = self.suit)
 
     def getValue(self, handValue = 0): # gets the value of the card from its rank. 
         value = 0
@@ -21,6 +25,8 @@ class Card:
                 value = Card.ranks_value_dict[rankKey]
                 
         return value
+
+import random
 
 class Player:
     
@@ -43,33 +49,62 @@ class Player:
         Net earnings: {net_earnings}
         """.format(name = self.name, wallet = self.wallet, wins = self.wins, loses = self.loses, net_earnings = self.net_earnings)
 
-    def placeBet(self): #place bet in table intervals
-        pass
+    def placeBet(self, multiplier): #place bet in table intervals
+        #multiplier = int(input("Enter a multipler for the min bet as a main bet: "))
+        mainBet = self.dealer.bet * multiplier
+        self.wallet -= mainBet
+        self.dealer.mainPot += mainBet 
+        return mainBet
 
-    def placeInsurance(self, mainBet): #place an insurance bet, up to half of your main bet if the dealer has an ace upturned incase dealer has blackjack
-        pass
+    def placeInsurance(self, insuranceBet): #place an insurance bet, up to half of your main bet if the dealer has an ace upturned incase dealer has blackjack
+        if insuranceBet > self.wallet: #in the case that the insurance is larger than the players wallet 
+            self.wallet = 0
+        self.wallet -= insuranceBet
+        self.dealer.insurancePot += insuranceBet
+        return insuranceBet
 
     def hit(self): #take one card from the deck
-        pass
+        rand_suit = random.randint(0,len(Card.all_suits)-1)
+        rand_rank = random.randint(0,len(Card.all_ranks)-1)
+        card = self.dealer.deck[rand_suit][rand_rank]
+        self.hand.append(card)
+        return card
 
     def stand(self): #end turn with hand
-        pass
+        return True
     
-    def doubledown(self): #double bet and take a card
-        pass
+    def doubledown(self, mainBet): #double bet and take a card
+        self.wallet -= mainBet
+        self.dealer.mainPot += mainBet
+        print(self.hit())
+
     
     def split(self): #split current hand into 2 hands and play with them seperately, draw a card for each hand
-        pass
+        dupe_card = self.hand.pop()
+        self.splithand.append(dupe_card)
+         
 
-    def fold(self): #forfeit half your bet to end your turn
-        pass
-    
+    def fold(self, mainBet): #forfeit half your bet to end your turn
+        self.dealer.mainPot -= mainBet/2
+        self.wallet += mainBet/2
+
     def joinTable(self, dealer):
         self.dealer = dealer
 
     def leaveTable(self):
         self.dealer = None
+
+    def clearHand(self):
+        self.hand = []
     
+    def playAgain(self):
+        playAgain = input("play again: ")
+        if playAgain == "y":
+            self.clearHand()
+            self.dealer.clearHand()
+            return True
+        return False
+
 class Dealer:
 
     @staticmethod
@@ -87,16 +122,40 @@ class Dealer:
         self.bet = bet
         self.hand = []
         self.deck = Dealer.makeDeck()
+        self.mainPot = 0
+        self.splitPot = 0
+        self.insurancePot = 0
 
     def __repr__(self):
         return "This table plays in intervals of ${bet} as bets. The dealer's name is {name}".format(bet = self.bet, name = self.name)
 
-    def deal(self): #take a random card from the deck, give 2 to the player and 2 to yourself
-        pass
+    def deal(self, player): #take a random card from the deck, give 2 to the player and 2 to yourself
+        print("You have", player.hit(), "and", player.hit())
+        print("The Dealer has", self.hit())
+        self.hit
 
     def checkValue(self, hand): #check the value of a hand
-        pass
+        totalValue = 0
+        for card in hand:
+            totalValue += card.getValue()
+        return totalValue
 
     def hit(self): #draw one card from deck
-        pass
-        
+        rand_suit = random.randint(0,len(Card.all_suits)-1)
+        rand_rank = random.randint(0,len(Card.all_ranks)-1)
+        card = self.deck[rand_suit][rand_rank]
+        self.hand.append(card)
+        return card
+         
+    def payPlayer(self, player, winType):
+        if winType == "win":
+            player.wallet += 2*self.mainPot
+        elif winType == "insurance":
+            player.wallet += 2*self.insurancePot
+        elif winType == "blackjack":
+            player.wallet += 2.5*self.mainPot
+        elif winType == "draw":
+            player.wallet += self.mainPot
+    
+    def clearHand(self):
+        self.hand = []
