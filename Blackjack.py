@@ -1,3 +1,12 @@
+import time
+import random
+
+class NegativeError(Exception):
+    pass
+
+class ChoiceException(Exception):
+    pass
+
 class Card:
     # class variables
     ranks_value_dict = {"A": 11, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8 ,"9": 9, "10": 10, "J": 10, "Q": 10, "K": 10}
@@ -26,8 +35,6 @@ class Card:
                 
         return value
 
-import random
-
 class Player:
     
     def __init__(self, name, wallet):
@@ -50,21 +57,49 @@ class Player:
         """.format(name = self.name, wallet = self.wallet, wins = self.wins, loses = self.loses, net_earnings = self.net_earnings)
 
     def placeBet(self): #place bet in table intervals
-        multiplier = int(input("Enter a multipler for the min bet (£{minBet}) as your main bet: ".format(minBet = self.dealer.bet)))
+        print("Wallet: ${wallet}".format(wallet=self.wallet))
+        while True:
+            try:
+                multiplier = int(input("How many ${minBet} bets do you want to make: ".format(minBet = self.dealer.bet)))
+                if multiplier <= 0:
+                    raise NegativeError
+            except (ValueError, NegativeError):
+                print("Please enter a positive integer(whole number)")
+                time.sleep(1.5)
+                continue
+            else:
+                break
         mainBet = self.dealer.bet * multiplier
-        if mainBet < self.wallet:
+        if mainBet <= self.wallet:
             self.wallet -= mainBet
             self.dealer.mainPot += mainBet 
+            print("You made a ${bet} bet".format(bet=mainBet))
+            time.sleep(1.5)
+            print("Wallet: ${wallet}".format(wallet=self.wallet))
+            time.sleep(1.5)
             return mainBet
         else:
             return False
+        
 
     def placeInsurance(self, bet): #place an insurance bet, up to half of your main bet if the dealer has an ace upturned incase dealer has blackjack
         insuranceBet = 0
-        choice = input("Do you want to place an insurance bet? (y/n): ")
+        while True:
+            choice = input("Do you want to place an insurance bet? (y/n): ")
+            if choice.lower() != "y" and choice.lower() != "n":
+                print("Not a valid choice")
+                time.sleep(1.5)
+                continue
+            else:
+                break
         if choice.lower() == "y":
             while insuranceBet <=  0 or insuranceBet > (bet/2):
-                insuranceBet = float(input("Enter an insurance bet up to half (${half}) of your main bet: ".format(half = bet/2)))
+                try:
+                    insuranceBet = float(input("Enter an insurance bet up to half (${half}) of your main bet: ".format(half = bet/2)))
+                except ValueError:
+                    print("Please only enter numbers")
+                    time.sleep(1.5)
+                    continue
         if insuranceBet > self.wallet: #in the case that the insurance is larger than the players wallet 
             self.wallet = 0
         self.wallet -= insuranceBet
@@ -111,8 +146,13 @@ class Player:
         self.hand = []
     
     def playAgain(self):
-        playAgain = input("play again: ")
-        if playAgain == "y":
+        while True:
+            playAgain = input("play again (y/n): ")
+            if playAgain.lower() != "y" and playAgain.lower() != "n":
+                print("Not a valid choice")
+            else:
+                break
+        if playAgain.lower() == "y":
             self.clearHand()
             self.dealer.clearHand()
             return True
@@ -144,8 +184,10 @@ class Dealer:
 
     def deal(self, player): #take a random card from the deck, give 2 to the player and 2 to yourself
         print("You have", player.hit(), "and", player.hit())
+        time.sleep(2)
         print("The Dealer has", self.hit())
         self.hit()
+        time.sleep(2)
 
     def checkValue(self, hand): #check the value of a hand
         totalValue = 0
@@ -163,33 +205,47 @@ class Dealer:
     def payPlayer(self, player, winType):
         if winType == "win":
             player.wallet += 2*self.mainPot
+            print("You won ${money}".format(money=2*self.mainPot))
         elif winType == "insurance":
             player.wallet += 2*self.insurancePot
+            print("You won ${money}".format(money=2*self.insurancePot))
         elif winType == "blackjack":
             player.wallet += 2.5*self.mainPot
+            print("You won ${money}".format(money=2.5*self.mainPot))
         elif winType == "draw":
             player.wallet += self.mainPot
+            print("You won ${money}".format(money=self.mainPot))
 
     def doesPlayerDrawCards(self, player, bet):
-        choice = input("""
-        1. Hit
-        2. Double Down
-        3. Stand
+        while True:
+            choice = input("""
+            Choose an option:
+            1. Hit
+            2. Double Down
+            3. Stand
 
-        Enter choice: """)
-        if choice == "1" or choice.lower() == "hit":
-            print("You drew", player.hit())
-            return True
-        elif choice == "2" or choice.lower() == "double down":
-            player.doubledown(bet)
-            return True
-        elif choice == "3" or choice.lower() == "stand":
-            player.stand()
-            return False
+            Enter choice: """)
+            if choice == "1" or choice.lower() == "hit":
+                print("You drew", player.hit())
+                return True
+            elif choice == "2" or choice.lower() == "double down":
+                player.doubledown(bet)
+                return True
+            elif choice == "3" or choice.lower() == "stand":
+                player.stand()
+                return False
+            else:
+                print("Not a valid choice")
+                
 
     def doesPlayerFold(self, round):
         if round == 1: #if this is the first round, asks the user if he wants to fold
-            foldChoice = input("Fold? (y/n):")
+            while True:
+                foldChoice = input("Fold? (y/n):")
+                if foldChoice.lower() != "y" and foldChoice.lower() != "n":
+                    print("Not a valid choice")
+                else:
+                    break
             if foldChoice == "y":
                 self.player.fold(bet)
                 return True
@@ -204,19 +260,21 @@ class Dealer:
     def checkSoft17(self):
         print("The dealers hole card is", self.hand[1])
         while self.checkValue(self.hand) < 17:
+            time.sleep(1.5)
             print("The dealer drew", self.hit())
                 
     def checkWinDrawLose(self, player):
         playerHandValue = self.checkValue(player.hand)
         dealerHandValue = self.checkValue(self.hand)
         print("The dealer hand has a value of", dealerHandValue)
+        time.sleep(1.5)
         print("Your hand has a value of", playerHandValue)
-
+        time.sleep(1.5)
         if dealerHandValue > 21 or dealerHandValue < playerHandValue:
             print("You win")
             self.payPlayer(player, "win")
         elif dealerHandValue == playerHandValue:
-            print("draw")
+            print("Draw")
             self.payPlayer(player, "draw")
         else:
             print("You lose")
@@ -249,14 +307,25 @@ class Blackjack:
         for dealer in Blackjack.dealers:
             print("Table", n, ":", dealer)
             n += 1
-
+        time.sleep(3)
 
     def assignTable(self):
         if self.player.dealer == None:
             self.showDealers()
-            choice = int(input("Which table do you want to play at? (1-5): "))
-            if choice > 0 and choice < len(Blackjack.dealers):
-                self.player.joinTable(Blackjack.dealers[choice-1])
+            while True:
+                try:
+                    choice = int(input("Which table number do you want to play at?: "))
+                except ValueError:
+                    print("not a valid choice, please enter a number")
+                    time.sleep(1.5)
+                else:
+                    if choice > 0 and choice <= len(Blackjack.dealers):
+                        self.player.joinTable(Blackjack.dealers[choice-1])
+                        break
+                    else:
+                        print("not a valid choice")
+                        time.sleep(1.5)
+                        
 
     def game(self):
         self.createPlayer()
@@ -265,7 +334,7 @@ class Blackjack:
         while True:
             bet = self.player.placeBet()
             if bet == False:
-                print("not enought money")
+                print("Your too broke. Leave or go to a different table")
                 break
 
             self.player.dealer.deal(self.player)
@@ -274,12 +343,16 @@ class Blackjack:
 
             if self.player.dealer.checkValue(self.player.hand) == 21: #this code block checks if the player has blackjack, then checks whether the dealer also has blackjack, then ends the game
                 print("{name} has BlackJack".format(name=self.player.name))
+                time.sleep(1.5)
                 if self.player.dealer.checkValue(self.player.dealer.hand) == 21:
                     print("The dealers hole card is", self.player.dealer.hand[1])
+                    time.sleep(1.5)
                     print("Dealer has blackjack, unlucky draw")
+                    time.sleep(1.5)
                     self.player.dealer.payPlayer(self.player, "insurance")
                 else:
                     print("Dealer doesn't have blackjack, you win")
+                    time.sleep(1.5)
                     self.player.dealer.payPlayer(self.player, "blackjack")
                 if self.player.playAgain():
                     continue
@@ -288,7 +361,9 @@ class Blackjack:
             
             if self.player.dealer.checkValue(self.player.dealer.hand) == 21: #this checks whether or not the dealer has blackjack. then ends the game
                 print("The dealers hole card is", self.player.dealer.hand[1])
+                time.sleep(1.5)
                 print("Dealer has blackjack")
+                time.sleep(1.5)
                 self.player.dealer.payPlayer(self.player, "insurance")
                 if self.player.playAgain():
                     continue
@@ -313,14 +388,16 @@ class Blackjack:
                 
             if isHandABust:
                 print("Bust. No win")
+                time.sleep(1.5) 
                 if self.player.playAgain():
                     continue
                 else:
                     break
 
             self.player.dealer.checkSoft17() # checks if the dealer's hand has a value of 17, if not then it draws until so
-
+            time.sleep(1.5)
             self.player.dealer.checkWinDrawLose(self.player)
+            time.sleep(1.5)
             if self.player.playAgain():
                 continue
             else:
