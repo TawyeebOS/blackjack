@@ -284,7 +284,7 @@ class Dealer:
         self.hand = []
 
 
-class Blackjack:
+class Casino:
     #static variables
     dealer_1 = Dealer("Poof", 5)
     dealer_2 = Dealer("Cosmo", 10)
@@ -304,7 +304,7 @@ class Blackjack:
 
     def showDealers(self):
         n = 1
-        for dealer in Blackjack.dealers:
+        for dealer in Casino.dealers:
             print("Table", n, ":", dealer)
             n += 1
         time.sleep(3)
@@ -319,8 +319,8 @@ class Blackjack:
                     print("not a valid choice, please enter a number")
                     time.sleep(1.5)
                 else:
-                    if choice > 0 and choice <= len(Blackjack.dealers):
-                        self.player.joinTable(Blackjack.dealers[choice-1])
+                    if choice > 0 and choice <= len(Casino.dealers):
+                        self.player.joinTable(Casino.dealers[choice-1])
                         break
                     else:
                         print("not a valid choice")
