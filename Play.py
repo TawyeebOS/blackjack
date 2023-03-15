@@ -1,4 +1,4 @@
 from Blackjack import *
 
-LotusCasino = BlackJack()
+LotusCasino = Casino()
 LotusCasino.game()
